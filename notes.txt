@@ -1,0 +1,99 @@
+import React, { useState, useRef, useCallback } from 'react';
+import GoogleMapReact from 'google-map-react';
+import usePlacesAutocomplete, {
+  getGeocode,
+  getLatLng,
+} from 'use-places-autocomplete';
+
+const LocationSearch = () => {
+  const [center, setCenter] = useState({ lat: 0, lng: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [marker, setMarker] = useState(null);
+  const mapRef = useRef(null);
+
+  const handleSelect = async ({ description }) => {
+    try {
+      const results = await getGeocode({ address: description });
+      const { lat, lng } = await getLatLng(results[0]);
+      setCenter({ lat, lng });
+      setZoom(16);
+      setMarker({ lat, lng });
+    } catch (error) {
+      console.log('Error: ', error);
+    }
+  };
+
+  const onMapClick = useCallback((event) => {
+    const { lat, lng } = event;
+    setCenter({ lat, lng });
+    setZoom(16);
+    setMarker({ lat, lng });
+  }, []);
+
+  const handleApiLoaded = (map, maps) => {
+    mapRef.current = map;
+  };
+
+  const { suggestions, setValue, clearSuggestions } = usePlacesAutocomplete({
+    debounce: 300,
+  });
+
+  return (
+    <div style={{ height: '500px', width: '100%' }}>
+      <GoogleMapReact
+        bootstrapURLKeys={{ key: YOUR_API_KEY_HERE }}
+        center={center}
+        zoom={zoom}
+        onClick={onMapClick}
+        yesIWantToUseGoogleMapApiInternals
+        onGoogleApiLoaded={({ map, maps }) => handleApiLoaded(map, maps)}
+      >
+        {marker && (
+          <Marker
+            lat={marker.lat}
+            lng={marker.lng}
+            text="My Marker"
+          />
+        )}
+      </GoogleMapReact>
+      <div className="search-box">
+        <input
+          type="text"
+          placeholder="Search for location..."
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+          }}
+          onBlur={clearSuggestions}
+        />
+        {suggestions.length > 0 && (
+          <ul>
+            {suggestions.map((suggestion) => {
+              const { place_id, description } = suggestion;
+              return (
+                <li
+                  key={place_id}
+                  onClick={() => handleSelect(suggestion)}
+                >
+                  {description}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Marker = ({ text }) => (
+  <div style={{ position: 'absolute', transform: 'translate(-50%, -50%)' }}>
+    <img
+      src="https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png"
+      alt="Map Marker"
+    />
+    <div>{text}</div>
+  </div>
+);
+
+export default LocationSearch;
